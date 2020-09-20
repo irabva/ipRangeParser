@@ -63,7 +63,10 @@ func expandCidrIntoIPs(cidr string) ([]string, []string, error) {
 		}
 	}
 	// remove network address and broadcast address
-	return ips[1 : len(ips)-1], warnings, nil
+	if len(ips) > 0 {
+		ips = ips[1 : len(ips)-1]
+	}
+	return ips, warnings, nil
 }
 
 func expandRangeIntoIPs(ran string) ([]string, []string, error)  {
