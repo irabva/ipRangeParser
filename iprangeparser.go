@@ -7,18 +7,18 @@ import (
 	"strings"
 )
 
-func isUnicastIP(ipString string) (bool, error){
+func isUnicastIP(ipString string) ([]string, []string, error){
 	ip := net.ParseIP(ipString)
 	if ip == nil {
 		msg := ipString + " is not IP address"
-		return false, errors.New(msg)
+		return nil, nil, errors.New(msg)
 	}
 
 	if ! ip.IsGlobalUnicast() {
 		msg := ipString + " is not global unicast IP address"
-		return false, errors.New(msg)
+		return nil, []string{msg}, nil
 	}
-	return true, nil
+	return []string{ipString}, nil, nil
 }
 
 //from github.com/kotakanbe/go-pingscanner
@@ -104,40 +104,33 @@ func ParceIPs(ipsList string) ([]string, []string, []error)  {
 	var errs []error
 	var ips []string
 	var warnings []string
+	usedFunctions := map[string]func(string) ([]string, []string, error) {
+		"cidr": expandCidrIntoIPs,
+		"range": expandRangeIntoIPs,
+		"ip": isUnicastIP,
+	}
 	splitted := strings.Split(ipsList, ",")
 	for _, element := range splitted {
+		var elementType string
 		element = strings.TrimSpace(element)
 		if strings.Contains(element, "/") {
-			if hosts, warning, err := expandCidrIntoIPs(element); err != nil {
-				errs = append(errs, err)
-			} else {
-				if warning != nil {
-					for _, msg := range warning{
-						warnings = append(warnings, msg)
-					}
-				}
-				for _, host := range hosts {
-					ips = append(ips, host)
-				}
-			}
-		} else if strings.Contains(element, "-"){
-			if hosts, warning, err := expandRangeIntoIPs(element); err != nil {
-				errs = append(errs, err)
-			} else {
-				if warning != nil {
-					for _, msg := range warning{
-						warnings = append(warnings, msg)
-					}
-				}
-				for _, host := range hosts {
-					ips = append(ips, host)
-				}
-			}
+			elementType = "cidr"
+		} else if strings.Contains(element, "-") {
+			elementType = "range"
 		} else {
-			if is, err := isUnicastIP(element); err != nil {
-				errs = append(errs, err)
-			} else if is {
-				ips = append(ips, element)
+			elementType = "ip"
+		}
+		hosts, warning, err := usedFunctions[elementType](element)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			if warning != nil {
+				for _, msg := range warning{
+					warnings = append(warnings, msg)
+				}
+			}
+			for _, host := range hosts {
+				ips = append(ips, host)
 			}
 		}
 	}
