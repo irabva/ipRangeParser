@@ -6,6 +6,18 @@ import (
 	"net"
 	"strings"
 )
+func removeDuplicateValues(slice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+
+	for _, entry := range slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
 
 func isUnicastIP(ipString string) ([]string, []string, error){
 	ip := net.ParseIP(ipString)
@@ -134,6 +146,7 @@ func ParceIPs(ipsList string) ([]string, []string, []error)  {
 			}
 		}
 	}
+	ips = removeDuplicateValues(ips)
 	return ips, warnings, errs
 }
 
